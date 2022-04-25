@@ -1,0 +1,9 @@
+/*Удалить разрешение .example и вставить креды GoogleSheets и TG бота */
+[tg_bot]
+token =
+admin_id =
+admin_login = @
+
+[google_sheets]
+sheets_id =
+
