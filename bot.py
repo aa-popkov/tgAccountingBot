@@ -12,6 +12,7 @@ from aiogram.utils.callback_data import CallbackData
 
 from googlesheets import gs_main
 from custom_func import pars_user_data
+from host_performance.performance import get_full_performance
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -35,6 +36,10 @@ exp_category_btn = ['🍜Продукты', '🏡Квартира', '🚗Тра�
                     '👔Одежда/Обувь', '🚄Поездки']
 inc_category_btn = ['💰Зарплата', '💸Аванс', '💳Кешбек', '🎁Подарки']
 
+basic_commands = "🏁 - /start\n" \
+                 "⛔ - /delete\n" \
+                 "📊 - /hostinfo"
+
 
 class OrderAccount(StatesGroup):
     waiting_type_account = State()
@@ -53,6 +58,19 @@ async def start_dialog(message: types.Message, state: FSMContext):
     kb.add(*account_type_btn)
     await message.answer('Привет!\nВыбери тип расходов, на панели', reply_markup=kb)
     await OrderAccount.waiting_type_account.set()
+
+
+@dp.message_handler(commands=['hostinfo'], state="*")
+async def start_dialog(message: types.Message, state: FSMContext):
+    if not is_admin(message):
+        await message.answer(f"Это личный бот, уходи!\nПо всем вопросам - {admin_login}")
+        return
+    await state.finish()
+    kb = types.ReplyKeyboardRemove()
+    host_performance_data = get_full_performance()
+    await message.answer(f"{host_performance_data['mem']}\n{host_performance_data['cpu']}\n"
+                         f"Заново:\n"
+                         f"{basic_commands}", reply_markup=kb)
 
 
 @dp.message_handler(commands=["delete"], state="*")
@@ -80,8 +98,8 @@ async def delete_last_row(message: types.Message, state: FSMContext):
     sheet_range = f"Data!A{num_row_for_update}:E{num_row_for_update}"
     gs_main.set_value([['', '', '', '', '']], sheet_range)
     await message.answer("Последняя строка удалена!\n\n"
-                         "Начать заново:\n"
-                         "/start")
+                         "Заново:\n"
+                         f"{basic_commands}")
 
 
 @dp.message_handler(state=OrderAccount.waiting_type_account)
@@ -172,7 +190,7 @@ async def empty_message(message: types.Message):
         return
     await message.answer("По такой команде ничего не нашел 😭\n"
                          "Воспользуйтесь одной из команд:\n"
-                         "/start")
+                         f"{basic_commands}")
 
 
 def is_admin(message: types.Message):
@@ -185,11 +203,11 @@ def is_admin(message: types.Message):
 async def on_startup(dp: Dispatcher):
     commands = [
         BotCommand(command="/start", description="Стартуем!"),
-        # BotCommand(command="/help", description="Помогаем"),
+        BotCommand(command="/hostinfo", description="Информируем!"),
         BotCommand(command="/delete", description="Удаляем!"),
     ]
     await bot.set_my_commands(commands)
-    await dp.bot.send_message(admin_chat_id, 'Бот перезапущен\n🏁 - /start')
+    await dp.bot.send_message(admin_chat_id, f'Бот перезапущен\n{basic_commands}')
 
 
 # Запуск бота
